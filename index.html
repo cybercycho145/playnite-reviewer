@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>게임 소감 일지</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="게임 소감 입력">
+        <header class="top-strip">
+          <div class="brand-block">
+            <div class="mark" aria-hidden="true">✦</div>
+            <div class="brand-copy">
+              <h1 class="brand-title">게임 소감 일지</h1>
+            </div>
+          </div>
+
+          <div class="corner-actions" aria-label="빠른 작업">
+            <button id="themeToggleButton" class="utility-button" type="button" aria-pressed="false">◐ 다크모드</button>
+            <label class="utility-button file-button">
+              CSV 임포트
+              <input id="csvFileInput" type="file" accept=".csv,text/csv">
+            </label>
+            <button id="exportCsvButton" class="utility-button" type="button" disabled>CSV 익스포트</button>
+            <button id="copyPowerShellButton" class="utility-button square-button" type="button" title="Playnite PowerShell 붙여넣기 내용 복사" aria-label="Playnite PowerShell 붙여넣기 내용 복사">▣</button>
+          </div>
+        </header>
+
+        <div id="exportNotice" class="export-notice" role="status" aria-live="polite" hidden></div>
+
+        <article id="gameCard" class="journal-board" hidden>
+          <section class="hero">
+            <div id="gameCover" class="game-cover" aria-label="Steam 헤더 이미지"></div>
+            <div class="hero-content">
+              <p id="gamePosition" class="game-kicker">-</p>
+              <h2 id="gameTitle" class="game-title">-</h2>
+              <dl class="game-meta">
+                <div>
+                  <dt>출시일</dt>
+                  <dd id="releaseDateValue">-</dd>
+                </div>
+                <div>
+                  <dt>소스</dt>
+                  <dd id="sourceValue">-</dd>
+                </div>
+                <div>
+                  <dt>게임 Id</dt>
+                  <dd id="gameIdValue">-</dd>
+                </div>
+              </dl>
+              <div class="hero-actions" aria-label="검색">
+                <a id="googleSearchLink" class="search-button" href="#" target="_blank" rel="noreferrer">⌕ 구글에서 찾기</a>
+                <a id="metacriticSearchLink" class="search-button" href="#" target="_blank" rel="noreferrer">◇ 메타크리틱 검색</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="editor-area">
+            <div class="status-field">
+              <div class="status-heading">
+                <p class="section-label">Status</p>
+                <strong id="statusCurrent" class="status-current">Unplayed</strong>
+              </div>
+              <div id="statusButtons" class="status-row"></div>
+            </div>
+
+            <div class="memo-field">
+              <div class="memo-topline">
+                <p class="section-label">Memo</p>
+                <span id="memoCount" class="memo-count">0자</span>
+              </div>
+              <textarea
+                id="noteInput"
+                class="memo-input"
+                rows="12"
+                placeholder="이 게임을 하면서 남기고 싶은 감정, 장면, 아쉬움, 다시 하고 싶은 이유를 적어두기"
+              ></textarea>
+            </div>
+
+            <nav class="bottom-nav" aria-label="게임 이동">
+              <button id="previousButton" class="nav-button prev" type="button">← 이전 게임</button>
+              <button id="completeButton" class="primary-button" type="button">완료</button>
+              <button id="nextButton" class="nav-button next" type="button">다음 게임 →</button>
+            </nav>
+          </section>
+        </article>
+      </section>
+
+      <aside class="side-panel" aria-label="일지 상태">
+        <section class="panel-card finder-card">
+          <div class="finder-title">
+            <strong>게임 찾기</strong>
+          </div>
+          <div class="jump-row">
+            <label class="finder-field">
+              <span>번호 이동</span>
+              <input id="jumpIndexInput" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 128">
+            </label>
+            <button id="jumpButton" class="plain-button" type="button">이동</button>
+          </div>
+          <label class="finder-field">
+            <span>게임 검색</span>
+            <input id="searchInput" type="search" autocomplete="off" placeholder="제목 일부 입력">
+          </label>
+          <div id="searchResults" class="search-results" aria-live="polite">CSV 임포트 후 사용할 수 있습니다.</div>
+        </section>
+
+        <section class="panel-card progress-card">
+          <div class="progress-head">
+            <div>
+              <div class="progress-label">입력 진행률</div>
+              <div id="progressPercent" class="progress-number">0%</div>
+            </div>
+            <strong id="currentCounter">-</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-row">
+              <span>전체 게임</span>
+              <strong id="totalMetric">0개</strong>
+            </div>
+            <div class="stat-row">
+              <span>입력 완료</span>
+              <strong id="reviewedMetric">0개</strong>
+            </div>
+            <div class="stat-row">
+              <span>불러온 파일</span>
+              <strong id="fileMetric">없음</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card action-stack">
+          <div class="dropbox-title">
+            <strong>Dropbox</strong>
+            <span class="connection-dot" aria-label="연결 대기"></span>
+          </div>
+          <div class="button-row">
+            <button id="dropboxConnectButton" class="plain-button" type="button">연결</button>
+            <button id="dropboxReloadButton" class="plain-button" type="button" disabled>불러오기</button>
+            <button id="dropboxSaveButton" class="plain-button full-row" type="button" disabled>Dropbox에 지금 저장</button>
+            <button id="dropboxDisconnectButton" class="plain-button full-row" type="button" hidden>연결 해제</button>
+          </div>
+          <div id="dropboxStatus" class="dropbox-status" aria-live="polite">Dropbox 미연결</div>
+        </section>
+      </aside>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
