@@ -1,6 +1,7 @@
 const STORAGE_KEY = "playnite-reviewer:v1";
 const DATA_FILE_NAME = "playnite-review-session.json";
-const HLTB_FILE_NAME = "htlb.tsv";
+const HLTB_FILE_NAMES = ["htlb.tsv", "HTLB.tsv", "hltb.csv", "HTLB.csv"];
+const HLTB_FETCH_TIMEOUT = 6000;
 const DROPBOX_APP_KEY = "86fbjrljz7vkqqa";
 const DROPBOX_TOKEN_KEY = "playnite-reviewer:dropbox-token";
 const DROPBOX_REMOTE_KEY = "playnite-reviewer:dropbox-remote";
@@ -204,13 +205,19 @@ async function initialize() {
 
 async function loadHltbData() {
   try {
-    const response = await fetch(HLTB_FILE_NAME, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`HLTB 파일을 읽지 못했습니다. (${response.status})`);
+    for (const fileName of HLTB_FILE_NAMES) {
+      const response = await fetchHltbFile(fileName);
+      if (!response.ok) {
+        continue;
+      }
+
+      hltbByGameId = parseHltbText(await response.text(), fileName);
+      hltbLoadState = "ready";
+      renderCurrentGame();
+      return;
     }
 
-    hltbByGameId = parseHltbTsv(await response.text());
-    hltbLoadState = "ready";
+    throw new Error("HLTB 파일을 찾지 못했습니다.");
   } catch (error) {
     console.warn(error);
     hltbByGameId = new Map();
@@ -218,6 +225,22 @@ async function loadHltbData() {
   }
 
   renderCurrentGame();
+}
+
+async function fetchHltbFile(fileName) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => {
+    controller.abort();
+  }, HLTB_FETCH_TIMEOUT);
+
+  try {
+    return await fetch(fileName, {
+      cache: "no-store",
+      signal: controller.signal
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function createDefaultState() {
@@ -512,13 +535,25 @@ function renderHltbInfo(row, indexes) {
     return;
   }
 
-  renderEmptyHltb(hltbLoadState === "loading" ? "읽는 중" : "HLTB 없음");
+  renderEmptyHltb(getHltbEmptyMessage());
 }
 
 function renderEmptyHltb(message) {
   elements.hltbValue.classList.add("is-empty");
   elements.hltbValue.removeAttribute("title");
   elements.hltbValue.textContent = message;
+}
+
+function getHltbEmptyMessage() {
+  if (hltbLoadState === "loading") {
+    return "읽는 중";
+  }
+
+  if (hltbLoadState === "failed") {
+    return "HLTB 파일 없음";
+  }
+
+  return "HLTB 없음";
 }
 
 function renderStatusButtons() {
@@ -807,8 +842,9 @@ function showExportNotice(message) {
   elements.exportNotice.hidden = false;
 }
 
-function parseHltbTsv(text) {
-  const rows = parseDelimitedRows(text, "\t").filter((row) => row.some((cell) => String(cell).trim()));
+function parseHltbText(text, fileName = "") {
+  const rows = parseDelimitedRows(text, detectHltbDelimiter(text, fileName))
+    .filter((row) => row.some((cell) => String(cell).trim()));
   const entries = new Map();
 
   rows.slice(1).forEach((row) => {
@@ -828,6 +864,18 @@ function parseHltbTsv(text) {
   });
 
   return entries;
+}
+
+function detectHltbDelimiter(text, fileName) {
+  const firstLine = String(text || "").split(/\r?\n/, 1)[0] || "";
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+
+  if (/\.csv$/i.test(fileName) && commaCount > tabCount) {
+    return ",";
+  }
+
+  return tabCount >= commaCount ? "\t" : ",";
 }
 
 function normalizeGameId(value) {
