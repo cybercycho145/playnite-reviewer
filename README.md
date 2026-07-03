@@ -1,4 +1,4 @@
-# Playnite Reviewer
+# Playnite Sorter
 
 Playnite에서 내보낸 게임 목록 CSV를 한 게임씩 보면서 `메모`와 `완료 상태`만 수정하기 위한 개인용 정적 웹앱입니다.
 
@@ -23,7 +23,7 @@ HowLongToBeat 표시까지 쓸 경우 새 GitHub 저장소에는 아래 5개 파
 5. 마지막에는 `CSV 익스포트`로 `allgames-reviewed.csv`를 내보냅니다.
 6. 내보낸 CSV를 문서 폴더에 넣고, `playnite용 파워쉘 명령어 복사` 버튼으로 복사한 PowerShell 명령어를 Playnite 내장 PowerShell에 붙여넣습니다.
 
-같은 폴더에 `htlb.tsv`가 있으면 `게임 Id`를 기준으로 HowLongToBeat의 Main Story, Main + Sides, Completionist 시간이 화면에 함께 표시됩니다.
+같은 폴더에 `htlb.tsv`가 있으면 `게임 Id`를 기준으로 HowLongToBeat의 Main Story, Main + Sides, Completionist 시간이 화면에 함께 표시됩니다. 파일명을 `htlb.csv`로 올린 경우도 인식하지만, 저장소에서는 `htlb.tsv`를 권장합니다. 파일을 못 읽는 경우에는 `app.js` 안에 내장된 HLTB 데이터가 대신 사용됩니다.
 
 ## CSV에서 바꾸는 값
 
@@ -38,15 +38,17 @@ HowLongToBeat 표시까지 쓸 경우 새 GitHub 저장소에는 아래 5개 파
 
 Dropbox 연동은 브라우저에서 직접 Dropbox API를 호출합니다. `app.js` 안에 Dropbox 앱 키가 들어 있습니다.
 
-새 GitHub 저장소 이름을 바꾸면 GitHub Pages 주소도 바뀌므로, Dropbox 앱 설정의 Redirect URI에 새 주소를 추가해야 합니다.
+새 GitHub 저장소 이름을 바꾸면 GitHub Pages 주소도 바뀌므로, Dropbox 앱 설정의 Redirect URI에 새 주소를 추가해야 합니다. 이 앱의 저장소 이름은 `playnite_sorter`를 기준으로 합니다.
 
 예시:
 
 ```text
-https://cybercycho145.github.io/새-저장소-이름/
+https://cybercycho145.github.io/playnite_sorter/
 ```
 
 로컬에서 테스트할 경우에는 로컬 서버 주소도 Redirect URI에 추가해야 합니다.
+
+연결 버튼을 누른 뒤 주소에 `?code=...&state=...`가 붙은 채로 멈추면, 새로 올린 `index.html`과 `app.js`가 모두 반영됐는지 확인하고 브라우저를 강력 새로고침합니다. Dropbox 앱 설정의 Redirect URI에는 실제 GitHub Pages 주소인 `https://cybercycho145.github.io/playnite_sorter/`처럼 끝의 `/`까지 포함한 주소를 넣어야 합니다.
 
 ## GitHub Pages
 
