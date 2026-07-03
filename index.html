@@ -24,7 +24,7 @@
               <input id="csvFileInput" type="file" accept=".csv,text/csv">
             </label>
             <button id="exportCsvButton" class="utility-button" type="button" disabled>CSV 익스포트</button>
-            <button id="copyPowerShellButton" class="utility-button square-button" type="button" title="Playnite PowerShell 붙여넣기 내용 복사" aria-label="Playnite PowerShell 붙여넣기 내용 복사">▣</button>
+            <button id="copyPowerShellButton" class="utility-button powershell-copy-button" type="button" title="Playnite용 파워쉘 명령어 복사">playnite용 파워쉘 명령어 복사</button>
           </div>
         </header>
 
@@ -45,9 +45,9 @@
                   <dt>소스</dt>
                   <dd id="sourceValue">-</dd>
                 </div>
-                <div>
-                  <dt>게임 Id</dt>
-                  <dd id="gameIdValue">-</dd>
+                <div class="htlb-meta">
+                  <dt>HLTB</dt>
+                  <dd id="hltbValue" class="htlb-value is-empty">읽는 중</dd>
                 </div>
               </dl>
               <div class="hero-actions" aria-label="검색">

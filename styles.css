@@ -189,6 +189,15 @@ button:disabled {
   padding: 0;
 }
 
+.powershell-copy-button {
+  max-width: 112px;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+}
+
 .utility-button:hover,
 .plain-button:hover,
 .nav-button:hover,
@@ -367,6 +376,48 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.game-meta .htlb-meta {
+  flex: 1 1 260px;
+  max-width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.game-meta .htlb-value {
+  max-width: none;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.htlb-value.is-empty {
+  color: var(--muted);
+}
+
+.htlb-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.htlb-chip abbr {
+  color: var(--accent-3);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.htlb-chip strong {
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .hero-actions {
@@ -822,6 +873,11 @@ button:disabled {
     flex: 0 0 33px;
     width: 33px;
     min-width: 33px;
+  }
+
+  .powershell-copy-button {
+    flex: 1 1 128px;
+    max-width: none;
   }
 
   .hero {

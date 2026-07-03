@@ -1,5 +1,6 @@
 const STORAGE_KEY = "playnite-reviewer:v1";
 const DATA_FILE_NAME = "playnite-review-session.json";
+const HLTB_FILE_NAME = "htlb.tsv";
 const DROPBOX_APP_KEY = "86fbjrljz7vkqqa";
 const DROPBOX_TOKEN_KEY = "playnite-reviewer:dropbox-token";
 const DROPBOX_REMOTE_KEY = "playnite-reviewer:dropbox-remote";
@@ -16,9 +17,14 @@ const STATUS_OPTIONS = [
   { value: "할것", icon: "📚" },
   { value: "깸", icon: "🏆" },
   { value: "또할것", icon: "🔄" },
-  { value: "하차", icon: "🏳️" },
+  { value: "하차", icon: "✋" },
   { value: "Unplayed", icon: "📦" },
   { value: "Never", icon: "🚫" }
+];
+const HLTB_TIME_TYPES = [
+  { key: "main", label: "M", title: "Main Story" },
+  { key: "mainExtra", label: "ME", title: "Main + Sides" },
+  { key: "completionist", label: "C", title: "Completionist" }
 ];
 
 const PLAYNITE_POWERSHELL_SCRIPT = String.raw`$PlayniteApi = [Playnite.SDK.API]::Instance
@@ -151,7 +157,7 @@ const elements = {
   googleSearchLink: document.querySelector("#googleSearchLink"),
   releaseDateValue: document.querySelector("#releaseDateValue"),
   sourceValue: document.querySelector("#sourceValue"),
-  gameIdValue: document.querySelector("#gameIdValue"),
+  hltbValue: document.querySelector("#hltbValue"),
   noteInput: document.querySelector("#noteInput"),
   memoCount: document.querySelector("#memoCount"),
   statusCurrent: document.querySelector("#statusCurrent"),
@@ -171,6 +177,8 @@ const elements = {
 
 let state = loadState();
 let selectedStatus = "Unplayed";
+let hltbByGameId = new Map();
+let hltbLoadState = "loading";
 let dropboxToken = loadDropboxToken();
 let dropboxRemote = loadDropboxRemote();
 let dropboxSaveTimer = null;
@@ -184,6 +192,7 @@ async function initialize() {
   applyTheme();
   bindEvents();
   renderStatusButtons();
+  loadHltbData();
   render();
   await completeDropboxOAuth();
   renderDropboxControls();
@@ -191,6 +200,24 @@ async function initialize() {
     await openDropboxStorage({ silent: true });
   }
   render();
+}
+
+async function loadHltbData() {
+  try {
+    const response = await fetch(HLTB_FILE_NAME, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HLTB 파일을 읽지 못했습니다. (${response.status})`);
+    }
+
+    hltbByGameId = parseHltbTsv(await response.text());
+    hltbLoadState = "ready";
+  } catch (error) {
+    console.warn(error);
+    hltbByGameId = new Map();
+    hltbLoadState = "failed";
+  }
+
+  renderCurrentGame();
 }
 
 function createDefaultState() {
@@ -451,7 +478,7 @@ function renderCurrentGame() {
   elements.gameTitle.textContent = title;
   elements.releaseDateValue.textContent = readCell(row, indexes.releaseDate) || "-";
   elements.sourceValue.textContent = readCell(row, indexes.source) || "-";
-  elements.gameIdValue.textContent = readCell(row, indexes.gameId) || readCell(row, indexes.id) || "-";
+  renderHltbInfo(row, indexes);
   renderGameCover(row, indexes, title);
   elements.googleSearchLink.href = `https://www.google.com/search?q=${encodeURIComponent(title)}`;
   elements.googleSearchLink.setAttribute("aria-label", `${title} 구글 검색`);
@@ -460,6 +487,38 @@ function renderCurrentGame() {
   elements.noteInput.value = readCell(row, indexes.note);
   updateMemoCount();
   renderStatusButtons();
+}
+
+function renderHltbInfo(row, indexes) {
+  const gameId = readCell(row, indexes.gameId);
+  const hltb = hltbByGameId.get(normalizeGameId(gameId));
+
+  if (!gameId.trim()) {
+    renderEmptyHltb("HLTB 없음");
+    return;
+  }
+
+  if (hltb) {
+    elements.hltbValue.classList.remove("is-empty");
+    elements.hltbValue.title = hltb.title ? `HowLongToBeat: ${hltb.title}` : "HowLongToBeat";
+    elements.hltbValue.innerHTML = HLTB_TIME_TYPES
+      .map((type) => `
+        <span class="htlb-chip">
+          <abbr title="${escapeHtml(type.title)}">${escapeHtml(type.label)}</abbr>
+          <strong>${escapeHtml(hltb[type.key] || "-")}</strong>
+        </span>
+      `)
+      .join("");
+    return;
+  }
+
+  renderEmptyHltb(hltbLoadState === "loading" ? "읽는 중" : "HLTB 없음");
+}
+
+function renderEmptyHltb(message) {
+  elements.hltbValue.classList.add("is-empty");
+  elements.hltbValue.removeAttribute("title");
+  elements.hltbValue.textContent = message;
 }
 
 function renderStatusButtons() {
@@ -748,7 +807,54 @@ function showExportNotice(message) {
   elements.exportNotice.hidden = false;
 }
 
+function parseHltbTsv(text) {
+  const rows = parseDelimitedRows(text, "\t").filter((row) => row.some((cell) => String(cell).trim()));
+  const entries = new Map();
+
+  rows.slice(1).forEach((row) => {
+    const normalized = normalizeRowLength(row, 6).map((cell) => stripBom(String(cell).trim()));
+    const [title, gameId, source, main, mainExtra, completionist] = normalized;
+    const hltb = {
+      title,
+      source,
+      main: normalizeHltbTime(main),
+      mainExtra: normalizeHltbTime(mainExtra),
+      completionist: normalizeHltbTime(completionist)
+    };
+
+    if (gameId && hasHltbTime(hltb)) {
+      entries.set(normalizeGameId(gameId), hltb);
+    }
+  });
+
+  return entries;
+}
+
+function normalizeGameId(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeHltbTime(value) {
+  const text = String(value || "").trim();
+  if (!text || /^데이터\s*없음$/i.test(text) || /^n\/?a$/i.test(text)) {
+    return "";
+  }
+
+  return text
+    .replace(/\s+시간/g, "시간")
+    .replace(/\s+분/g, "분")
+    .replace(/\s+/g, " ");
+}
+
+function hasHltbTime(value) {
+  return Boolean(value.main || value.mainExtra || value.completionist);
+}
+
 function parseCsvRows(text) {
+  return parseDelimitedRows(text, ",");
+}
+
+function parseDelimitedRows(text, delimiter) {
   const rows = [];
   let row = [];
   let cell = "";
@@ -763,7 +869,7 @@ function parseCsvRows(text) {
       index += 1;
     } else if (char === '"') {
       quoted = !quoted;
-    } else if (char === "," && !quoted) {
+    } else if (char === delimiter && !quoted) {
       row.push(cell);
       cell = "";
     } else if ((char === "\n" || char === "\r") && !quoted) {
