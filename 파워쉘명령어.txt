@@ -1,0 +1,85 @@
+$PlayniteApi = [Playnite.SDK.API]::Instance
+
+$path = "$env:USERPROFILE\Downloads\allgames-reviewed.csv"
+
+if (-not (Test-Path $path)) {
+    throw "CSV 파일을 찾을 수 없습니다: $path"
+}
+
+$rows = Import-Csv -Path $path -Encoding UTF8
+
+$gamesById = @{}
+foreach ($g in $PlayniteApi.Database.Games) {
+    $gamesById[$g.Id.ToString()] = $g
+}
+
+$completionByName = @{}
+foreach ($s in $PlayniteApi.Database.CompletionStatuses) {
+    $completionByName[$s.Name] = $s
+}
+
+Write-Host "Playnite 게임 수: $($gamesById.Count)"
+Write-Host "CSV 행 수: $($rows.Count)"
+Write-Host ""
+
+$updatedNotes = 0
+$updatedStatus = 0
+$skippedBlankMemo = 0
+$skippedBlankStatus = 0
+$notFoundGame = 0
+$notFoundStatus = 0
+
+$PlayniteApi.Database.BeginBufferUpdate()
+
+try {
+    foreach ($row in $rows) {
+        $id = $row.Id
+
+        if ([string]::IsNullOrWhiteSpace($id)) {
+            continue
+        }
+
+        if (-not $gamesById.ContainsKey($id)) {
+            Write-Host "게임 못 찾음: $($row.'게임 이름') / $id"
+            $notFoundGame++
+            continue
+        }
+
+        $game = $gamesById[$id]
+
+        $memo = $row.'메모'
+        if ([string]::IsNullOrWhiteSpace($memo)) {
+            $skippedBlankMemo++
+        } else {
+            $game.Notes = $memo
+            $updatedNotes++
+        }
+
+        $statusName = $row.'완료 상태'
+        if ([string]::IsNullOrWhiteSpace($statusName)) {
+            $skippedBlankStatus++
+        } else {
+            if ($completionByName.ContainsKey($statusName)) {
+                $game.CompletionStatusId = $completionByName[$statusName].Id
+                $updatedStatus++
+            } else {
+                Write-Host "완료 상태 못 찾음: $($row.'게임 이름') => $statusName"
+                $notFoundStatus++
+            }
+        }
+
+        $PlayniteApi.Database.Games.Update($game)
+    }
+}
+finally {
+    $PlayniteApi.Database.EndBufferUpdate()
+}
+
+Write-Host ""
+Write-Host "완료"
+Write-Host "메모 반영: $updatedNotes"
+Write-Host "완료 상태 반영: $updatedStatus"
+Write-Host "빈 메모라 건너뜀: $skippedBlankMemo"
+Write-Host "빈 완료 상태라 건너뜀: $skippedBlankStatus"
+Write-Host "게임 못 찾음: $notFoundGame"
+Write-Host "완료 상태 못 찾음: $notFoundStatus"

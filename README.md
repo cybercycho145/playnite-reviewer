@@ -1,4 +1,4 @@
-# Playnite Sorter (헤어질 결심)
+# Playnite Sorter
 
 Playnite에서 내보낸 게임 목록 CSV를 한 게임씩 보면서 `메모`와 `완료 상태`만 수정하기 위한 개인용 정적 웹앱입니다.
 
@@ -10,7 +10,7 @@ HowLongToBeat 표시까지 쓸 경우 새 GitHub 저장소에는 아래 5개 파
 - `styles.css`
 - `app.js`
 - `README.md`
-- `htlb.tsv` (HowLongToBeat 시간을 표시할 경우)
+- `hltb.csv` (HowLongToBeat 시간을 표시할 경우)
 
 `allgames.csv`, `allgames-reviewed.csv`, 개인 게임 목록 CSV, 디자인 참고 파일은 저장소에 올리지 않는 것을 권장합니다.
 
@@ -21,9 +21,9 @@ HowLongToBeat 표시까지 쓸 경우 새 GitHub 저장소에는 아래 5개 파
 3. 게임별로 메모를 적고 완료 상태를 고릅니다.
 4. 중간 저장이 필요하면 Dropbox를 연결합니다.
 5. 마지막에는 `CSV 익스포트`로 `allgames-reviewed.csv`를 내보냅니다.
-6. 내보낸 CSV를 문서 폴더에 넣고, `playnite용 파워쉘 명령어 복사` 버튼으로 복사한 PowerShell 명령어를 Playnite 내장 PowerShell에 붙여넣습니다.
+6. 다운로드 폴더에 `allgames-reviewed.csv`가 저장된 것을 확인한 뒤, `playnite용 파워쉘 명령어 복사` 버튼으로 복사한 PowerShell 명령어를 Playnite 내장 PowerShell에 붙여넣습니다.
 
-같은 폴더에 `htlb.tsv`가 있으면 `게임 Id`를 기준으로 HowLongToBeat의 Main Story, Main + Sides, Completionist 시간이 화면에 함께 표시됩니다. 파일명을 `htlb.csv`로 올린 경우도 인식하지만, 저장소에서는 `htlb.tsv`를 권장합니다. 파일을 못 읽는 경우에는 `app.js` 안에 내장된 HLTB 데이터가 대신 사용됩니다.
+같은 폴더에 `hltb.csv`가 있으면 게임 이름과 소스를 기준으로 HowLongToBeat의 Main Story, Main + Sides, Completionist 시간이 화면에 함께 표시됩니다.
 
 ## CSV에서 바꾸는 값
 
