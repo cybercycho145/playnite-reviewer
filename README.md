@@ -1,4 +1,4 @@
-# Playnite Sorter
+# Playnite Sorter (헤어질 결심)
 
 Playnite에서 내보낸 게임 목록 CSV를 한 게임씩 보면서 `메모`와 `완료 상태`만 수정하기 위한 개인용 정적 웹앱입니다.
 
