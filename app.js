@@ -269,8 +269,8 @@ function bindEvents() {
     }
 
     selectedStatus = normalizeStatus(button.dataset.status);
-    syncCurrentFormToState();
-    saveState("상태 저장");
+    const syncResult = syncCurrentFormToState();
+    saveState("상태 저장", { dropboxDirty: Boolean(syncResult && syncResult.changed) });
     renderMetrics();
     renderStatusButtons();
   });
@@ -334,7 +334,7 @@ function importCsvText(text, fileName) {
     reviewedKeys: {}
   };
   selectedStatus = getCurrentStatus();
-  saveState("CSV 불러옴");
+  saveState("CSV 불러옴", { dropboxDirty: true });
   render();
 }
 
@@ -558,14 +558,15 @@ function normalizeStatus(value) {
 }
 
 function commitCurrentAndMove() {
-  if (!syncCurrentFormToState({ markReviewed: true })) {
+  const syncResult = syncCurrentFormToState({ markReviewed: true });
+  if (!syncResult) {
     return;
   }
 
   const wasLast = state.currentIndex === state.rows.length - 1;
   state.currentIndex = nextIndex(state.currentIndex, 1);
   selectedStatus = getCurrentStatus();
-  saveState("입력 완료");
+  saveState("입력 완료", { dropboxDirty: syncResult.changed });
   render();
   showToast(wasLast ? "마지막 게임을 저장하고 처음으로 돌아왔습니다." : "저장하고 다음 게임으로 넘어갔습니다.");
 }
@@ -577,14 +578,25 @@ function syncCurrentFormToState(options = {}) {
   }
 
   const indexes = getColumnIndexes();
-  setCell(row, indexes.note, elements.noteInput.value);
-  setCell(row, indexes.status, normalizeStatus(selectedStatus));
+  const previousNote = readCell(row, indexes.note);
+  const previousStatus = normalizeStatus(readCell(row, indexes.status));
+  const nextNote = elements.noteInput.value;
+  const nextStatus = normalizeStatus(selectedStatus);
+  let changed = previousNote !== nextNote || previousStatus !== nextStatus;
+
+  setCell(row, indexes.note, nextNote);
+  setCell(row, indexes.status, nextStatus);
 
   if (options.markReviewed) {
-    state.reviewedKeys[getRowKey(state.currentIndex)] = true;
+    const rowKey = getRowKey(state.currentIndex);
+    const shouldMarkReviewed = Boolean(nextNote.trim()) || nextStatus !== "Unplayed";
+    if (shouldMarkReviewed && !state.reviewedKeys[rowKey]) {
+      state.reviewedKeys[rowKey] = true;
+      changed = true;
+    }
   }
 
-  return true;
+  return { changed };
 }
 
 function moveCurrent(direction) {
@@ -710,9 +722,11 @@ function getReviewedCount() {
   }, 0);
 }
 
-function saveState(message = "저장됨") {
+function saveState(message = "저장됨", options = {}) {
   persistLocalState();
-  markDropboxUnsaved();
+  if (options.dropboxDirty) {
+    markDropboxUnsaved();
+  }
   document.title = message === "저장됨" ? "헤어질 결심" : `헤어질 결심 - ${message}`;
   window.clearTimeout(saveState.timer);
   saveState.timer = window.setTimeout(() => {
