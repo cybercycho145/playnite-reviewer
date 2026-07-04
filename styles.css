@@ -190,15 +190,6 @@ button:disabled {
   padding: 0;
 }
 
-.powershell-copy-button {
-  max-width: 112px;
-  padding: 0 7px;
-  font-size: 10px;
-  line-height: 1.15;
-  white-space: normal;
-  text-align: center;
-}
-
 .utility-button:hover,
 .plain-button:hover,
 .nav-button:hover,
@@ -874,11 +865,6 @@ button:disabled {
     flex: 0 0 33px;
     width: 33px;
     min-width: 33px;
-  }
-
-  .powershell-copy-button {
-    flex: 1 1 128px;
-    max-width: none;
   }
 
   .hero {
