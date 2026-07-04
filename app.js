@@ -16,7 +16,6 @@ const DROPBOX_UPLOAD_URL = "https://content.dropboxapi.com/2/files/upload";
 const DROPBOX_DOWNLOAD_URL = "https://content.dropboxapi.com/2/files/download";
 const DROPBOX_METADATA_URL = "https://api.dropboxapi.com/2/files/get_metadata";
 const DROPBOX_SCOPES = "files.content.read files.content.write files.metadata.read";
-const DROPBOX_AUTO_SAVE_DELAY = 900;
 const STATUS_OPTIONS = [
   { value: "우선할것", icon: "🔥" },
   { value: "할것", icon: "📚" },
@@ -99,7 +98,6 @@ let hltbByTitle = new Map();
 let hltbLoadState = "loading";
 let dropboxToken = loadDropboxToken();
 let dropboxRemote = loadDropboxRemote();
-let dropboxSaveTimer = null;
 let dropboxSaveInFlight = false;
 let dropboxSaveAgain = false;
 let dropboxStatusMessage = "";
@@ -714,7 +712,7 @@ function getReviewedCount() {
 
 function saveState(message = "저장됨") {
   persistLocalState();
-  queueDropboxSave();
+  markDropboxUnsaved();
   document.title = message === "저장됨" ? "헤어질 결심" : `헤어질 결심 - ${message}`;
   window.clearTimeout(saveState.timer);
   saveState.timer = window.setTimeout(() => {
@@ -724,6 +722,12 @@ function saveState(message = "저장됨") {
 
 function persistLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function markDropboxUnsaved() {
+  if (isDropboxConnected()) {
+    setDropboxStatus("Dropbox 미저장 변경 있음. 지금 저장 버튼으로 저장하세요.");
+  }
 }
 
 async function exportCsv() {
@@ -1063,7 +1067,7 @@ function cleanDropboxOAuthUrl(url) {
 async function openDropboxStorage(options = {}) {
   const token = await getDropboxAccessToken({ silent: true });
   if (!token) {
-    return;
+    return "failed";
   }
 
   try {
@@ -1077,16 +1081,18 @@ async function openDropboxStorage(options = {}) {
     if (!options.silent) {
       showToast("Dropbox에서 불러왔습니다.");
     }
+    return "ready";
   } catch (error) {
     if (isDropboxNotFound(error)) {
-      await createDropboxStorageFile(token);
-      return;
+      setDropboxStatus("Dropbox 저장 파일 없음. 지금 저장 버튼으로 생성하세요.");
+      return "missing";
     }
 
     setDropboxStatus("Dropbox 불러오기 실패");
     if (!options.silent) {
       window.alert(error.message);
     }
+    return "failed";
   }
 }
 
@@ -1094,7 +1100,7 @@ async function createDropboxStorageFile(token) {
   try {
     const metadata = await uploadDropboxState(token, state, "add");
     saveDropboxRemote(metadata);
-    setDropboxStatus(`Dropbox에 새 작업 파일 생성: ${DATA_FILE_NAME}`);
+    setDropboxStatus(`Dropbox 저장됨: ${DATA_FILE_NAME}`);
   } catch (error) {
     setDropboxStatus("Dropbox 파일 생성 실패");
     window.alert(error.message);
@@ -1118,23 +1124,10 @@ async function reloadFromDropbox() {
 function disconnectDropbox() {
   dropboxToken = null;
   dropboxRemote = null;
-  window.clearTimeout(dropboxSaveTimer);
   localStorage.removeItem(DROPBOX_TOKEN_KEY);
   localStorage.removeItem(DROPBOX_REMOTE_KEY);
   setDropboxStatus("Dropbox 연결 해제됨");
   renderDropboxControls();
-}
-
-function queueDropboxSave() {
-  if (!isDropboxReady()) {
-    return;
-  }
-
-  window.clearTimeout(dropboxSaveTimer);
-  setDropboxStatus("Dropbox 저장 대기 중...");
-  dropboxSaveTimer = window.setTimeout(() => {
-    saveDropboxNow();
-  }, DROPBOX_AUTO_SAVE_DELAY);
 }
 
 async function saveDropboxNow() {
@@ -1148,28 +1141,33 @@ async function saveDropboxNow() {
     persistLocalState();
   }
 
-  if (!isDropboxReady()) {
-    await openDropboxStorage({ silent: true });
-    if (!isDropboxReady()) {
-      return;
-    }
-  }
-
   if (dropboxSaveInFlight) {
     dropboxSaveAgain = true;
     return;
   }
 
-  const token = await getDropboxAccessToken();
-  if (!token) {
-    return;
-  }
-
-  window.clearTimeout(dropboxSaveTimer);
   dropboxSaveInFlight = true;
   dropboxSaveAgain = false;
 
   try {
+    const token = await getDropboxAccessToken();
+    if (!token) {
+      return;
+    }
+
+    if (!isDropboxReady()) {
+      const openResult = await openDropboxStorage({ silent: true });
+      if (!isDropboxReady()) {
+        if (openResult === "missing") {
+          await createDropboxStorageFile(token);
+          if (isDropboxReady()) {
+            showToast("Dropbox에 저장했습니다.");
+          }
+        }
+        return;
+      }
+    }
+
     setDropboxStatus("Dropbox에 저장 중...");
     const mode = dropboxRemote && dropboxRemote.rev
       ? { ".tag": "update", update: dropboxRemote.rev }
